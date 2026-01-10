@@ -27,10 +27,11 @@ function createControlButton() {
   button.setAttribute('title', 'Copy transcript');
   button.setAttribute('data-transcript-control', 'true');
 
-  // SVG icon - stylized "T" that reads as peer to CC button
+  // SVG icon - bordered Ț to match CC button style
   button.innerHTML = `
     <svg height="100%" viewBox="0 0 36 36" width="100%">
-      <path d="M11 12h14v2H11zM17 14h2v10h-2z" fill="currentColor"/>
+      <rect x="10" y="10" width="16" height="16" rx="2" ry="2" fill="none" stroke="currentColor" stroke-width="1.5"/>
+      <text x="18" y="23" text-anchor="middle" font-family="YouTube Noto, Roboto, Arial, sans-serif" font-size="11" font-weight="500" fill="currentColor">Ț</text>
     </svg>
   `;
 
