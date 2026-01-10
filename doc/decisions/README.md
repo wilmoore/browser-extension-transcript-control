@@ -21,3 +21,4 @@ We use the [Michael Nygard format](https://cognitect.com/blog/2011/11/15/documen
 - [001. Use Content Script with Page Script Injection](001-content-script-page-injection.md)
 - [002. Silent Operation Design](002-silent-operation-design.md)
 - [003. YouTube Player Control Positioning](003-youtube-player-control-positioning.md)
+- [004. Android Client Context for PoToken Bypass](004-android-client-potoken-bypass.md)

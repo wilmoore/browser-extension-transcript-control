@@ -1,7 +1,24 @@
 /**
  * Transcript extraction module
- * Extracts full transcript from YouTube video player data
+ * Extracts full transcript from YouTube video using Innertube API with Android client
+ *
+ * Uses Android client context to bypass PoToken requirement (exp=xpe parameter)
+ * that would otherwise cause empty responses from caption endpoints.
  */
+
+/**
+ * Android client context for Innertube API
+ * This bypasses the PoToken requirement that web client URLs have
+ */
+const ANDROID_CONTEXT = {
+  client: {
+    clientName: 'ANDROID',
+    clientVersion: '19.09.37',
+    androidSdkVersion: 30,
+    hl: 'en',
+    gl: 'US'
+  }
+};
 
 /**
  * Extract video ID from current URL
@@ -13,74 +30,122 @@ function getVideoId() {
 }
 
 /**
- * Get player response data from YouTube page
- * @returns {object|null} Player response or null
+ * Get Innertube API key from YouTube page config
+ * @returns {string|null} API key or null if not found
  */
-function getPlayerResponse() {
-  // Try ytInitialPlayerResponse first (fastest)
-  if (window.ytInitialPlayerResponse) {
-    return window.ytInitialPlayerResponse;
+function getApiKey() {
+  return window.ytcfg?.data_?.INNERTUBE_API_KEY || null;
+}
+
+/**
+ * Fetch fresh player data using Innertube API with Android client
+ * @param {string} videoId - YouTube video ID
+ * @returns {Promise<object|null>} Player response data or null
+ */
+async function fetchPlayerData(videoId) {
+  const apiKey = getApiKey();
+  if (!apiKey) {
+    throw new Error('Could not find API key');
   }
 
-  // Fallback: Try to get from ytplayer config
-  if (window.ytplayer?.config?.args?.player_response) {
-    try {
-      return JSON.parse(window.ytplayer.config.args.player_response);
-    } catch {
-      return null;
-    }
+  const response = await fetch(`/youtubei/v1/player?key=${apiKey}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      context: ANDROID_CONTEXT,
+      videoId
+    }),
+    credentials: 'include'
+  });
+
+  if (!response.ok) {
+    throw new Error(`Player API failed: ${response.status}`);
   }
 
-  return null;
+  return response.json();
 }
 
 /**
  * Extract caption tracks from player response
- * @param {object} playerResponse - YouTube player response
+ * @param {object} playerData - YouTube player response
  * @returns {Array} Array of caption track objects
  */
-function getCaptionTracks(playerResponse) {
-  return playerResponse?.captions?.playerCaptionsTracklistRenderer?.captionTracks || [];
+function getCaptionTracks(playerData) {
+  return playerData?.captions?.playerCaptionsTracklistRenderer?.captionTracks || [];
 }
 
 /**
- * Fetch transcript from caption track URL
+ * Fetch transcript XML from caption track URL
  * @param {string} baseUrl - Caption track base URL
- * @returns {Promise<string>} Transcript text
+ * @returns {Promise<string>} Raw XML transcript
  */
-async function fetchTranscript(baseUrl) {
-  // Request JSON format for easier parsing
-  const url = `${baseUrl}&fmt=json3`;
+async function fetchTranscriptXml(baseUrl) {
+  const response = await fetch(baseUrl, {
+    credentials: 'include',
+    signal: AbortSignal.timeout(15000)
+  });
 
-  const response = await fetch(url);
   if (!response.ok) {
     throw new Error(`Failed to fetch transcript: ${response.status}`);
   }
 
-  const data = await response.json();
-  return parseTranscriptJson(data);
+  return response.text();
 }
 
 /**
- * Parse JSON3 format transcript
- * @param {object} data - JSON3 transcript data
- * @returns {string} Formatted transcript text with timestamps
+ * Decode HTML entities in text
+ * @param {string} text - Text with HTML entities
+ * @returns {string} Decoded text
  */
-function parseTranscriptJson(data) {
-  const events = data.events || [];
+function decodeHtmlEntities(text) {
+  const entities = {
+    '&amp;': '&',
+    '&lt;': '<',
+    '&gt;': '>',
+    '&quot;': '"',
+    '&#39;': "'",
+    '&apos;': "'",
+    '&#x27;': "'",
+    '&#x2F;': '/',
+    '&#47;': '/',
+    '&nbsp;': ' '
+  };
+
+  let decoded = text;
+  for (const [entity, char] of Object.entries(entities)) {
+    decoded = decoded.split(entity).join(char);
+  }
+
+  // Handle numeric entities like &#123;
+  decoded = decoded.replace(/&#(\d+);/g, (match, dec) => String.fromCharCode(dec));
+  decoded = decoded.replace(/&#x([0-9a-fA-F]+);/g, (match, hex) => String.fromCharCode(parseInt(hex, 16)));
+
+  return decoded;
+}
+
+/**
+ * Parse transcript XML into formatted text with timestamps
+ * YouTube uses <p t="ms" d="ms">text</p> format
+ * @param {string} xml - Raw XML transcript
+ * @returns {string} Formatted transcript text
+ */
+function parseTranscriptXml(xml) {
+  // Match <p t="startMs" d="durationMs">text</p>
+  const regex = /<p t="(\d+)"[^>]*>([^<]*)<\/p>/g;
   const lines = [];
+  let match;
 
-  for (const event of events) {
-    // Skip events without segments (like newlines or metadata)
-    if (!event.segs) continue;
+  while ((match = regex.exec(xml)) !== null) {
+    const startMs = parseInt(match[1], 10);
+    const rawText = match[2];
 
-    const timestamp = formatTimestamp(event.tStartMs);
-    const text = event.segs
-      .map(seg => seg.utf8 || '')
-      .join('')
+    // Clean up text
+    const text = decodeHtmlEntities(rawText)
+      .replace(/\n/g, ' ')  // Replace newlines with spaces
       .trim();
 
     if (text) {
+      const timestamp = formatTimestamp(startMs);
       lines.push(`[${timestamp}] ${text}`);
     }
   }
@@ -110,23 +175,40 @@ function formatTimestamp(ms) {
 /**
  * Get full transcript for current video
  * Prefers manual captions over auto-generated
+ * Uses Android client to bypass PoToken requirement
  * @returns {Promise<string>} Transcript text
  */
 async function getTranscript() {
-  const playerResponse = getPlayerResponse();
-  if (!playerResponse) {
-    throw new Error('Could not access video data');
+  const videoId = getVideoId();
+  if (!videoId) {
+    throw new Error('No video ID found');
   }
 
-  const tracks = getCaptionTracks(playerResponse);
+  // Fetch fresh player data using Android client
+  const playerData = await fetchPlayerData(videoId);
+
+  const tracks = getCaptionTracks(playerData);
   if (tracks.length === 0) {
     throw new Error('No transcript available');
   }
 
-  // Prefer non-auto-generated tracks, fallback to first available
+  // Prefer non-auto-generated tracks (manual captions), fallback to first available
   const preferredTrack = tracks.find(t => !t.kind || t.kind !== 'asr') || tracks[0];
 
-  return fetchTranscript(preferredTrack.baseUrl);
+  // Fetch and parse transcript
+  const xml = await fetchTranscriptXml(preferredTrack.baseUrl);
+
+  if (!xml || xml.length === 0) {
+    throw new Error('Empty transcript response');
+  }
+
+  const transcript = parseTranscriptXml(xml);
+
+  if (!transcript) {
+    throw new Error('Failed to parse transcript');
+  }
+
+  return transcript;
 }
 
 // Export for content script
@@ -134,3 +216,21 @@ window.TranscriptControl = {
   getTranscript,
   getVideoId
 };
+
+// Listen for transcript requests from content script
+// This runs in page context and can respond directly via postMessage
+window.addEventListener('message', async (event) => {
+  // Only handle messages from this window
+  if (event.source !== window) return;
+
+  // Check for transcript request with messageId
+  if (event.data?.type === 'GET_TRANSCRIPT' && event.data?.messageId) {
+    const messageId = event.data.messageId;
+    try {
+      const transcript = await getTranscript();
+      window.postMessage({ type: 'TRANSCRIPT_RESULT', messageId, transcript }, '*');
+    } catch (err) {
+      window.postMessage({ type: 'TRANSCRIPT_RESULT', messageId, error: err.message }, '*');
+    }
+  }
+});
