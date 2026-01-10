@@ -30,8 +30,8 @@ function createControlButton() {
   // SVG icon - bordered Ț to match CC button style
   button.innerHTML = `
     <svg height="100%" viewBox="0 0 36 36" width="100%">
-      <rect x="10" y="10" width="16" height="16" rx="2" ry="2" fill="none" stroke="currentColor" stroke-width="1.5"/>
-      <text x="18" y="23" text-anchor="middle" font-family="YouTube Noto, Roboto, Arial, sans-serif" font-size="11" font-weight="500" fill="currentColor">Ț</text>
+      <rect x="9" y="9" width="18" height="18" rx="2" ry="2" fill="none" stroke="currentColor" stroke-width="2"/>
+      <text x="18" y="23.5" text-anchor="middle" font-family="Roboto, Arial, sans-serif" font-size="13" font-weight="500" fill="currentColor">Ț</text>
     </svg>
   `;
 
