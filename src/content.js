@@ -107,13 +107,15 @@ function injectControl() {
 
   controlButton = createControlButton();
 
-  // Insert after CC button if present, otherwise at start of right controls
+  // Insert after CC button if present and is direct child of container
   const ccButton = findCCButton();
-  if (ccButton && ccButton.nextSibling) {
+  if (ccButton && ccButton.parentElement === container && ccButton.nextSibling) {
     container.insertBefore(controlButton, ccButton.nextSibling);
-  } else if (ccButton) {
-    container.appendChild(controlButton);
+  } else if (ccButton && ccButton.parentElement === container) {
+    // CC button is last child, append after it
+    ccButton.after(controlButton);
   } else {
+    // Fallback: insert at start of right controls
     container.insertBefore(controlButton, container.firstChild);
   }
 }
