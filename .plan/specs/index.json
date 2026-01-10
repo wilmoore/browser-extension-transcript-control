@@ -1,0 +1,16 @@
+{
+  "lastSequence": 1,
+  "specs": [
+    {
+      "id": "spec-001",
+      "title": "PRD — Țranscript Control",
+      "filename": "spec-001-prd-transcript-control.md",
+      "source": "clipboard",
+      "importedAt": "2026-01-10T00:00:00.000Z",
+      "extractedItems": {
+        "epics": 5,
+        "stories": 3
+      }
+    }
+  ]
+}

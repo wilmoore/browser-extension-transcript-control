@@ -1,0 +1,38 @@
+/**
+ * Transcript Control button styles
+ * Matches YouTube native player control appearance
+ */
+
+.transcript-control-btn {
+  /* Match YouTube button dimensions */
+  width: 48px;
+  height: 100%;
+  padding: 0;
+  margin: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  opacity: 0.9;
+  transition: opacity 0.1s ease;
+}
+
+.transcript-control-btn:hover {
+  opacity: 1;
+}
+
+.transcript-control-btn svg {
+  /* Match YouTube icon sizing */
+  width: 36px;
+  height: 36px;
+  pointer-events: none;
+}
+
+/* Match YouTube's focus state */
+.transcript-control-btn:focus {
+  outline: none;
+}
+
+.transcript-control-btn:focus-visible {
+  outline: 1px solid rgba(255, 255, 255, 0.5);
+  outline-offset: -1px;
+}
