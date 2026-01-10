@@ -1,0 +1,31 @@
+{
+  "manifest_version": 3,
+  "name": "Transcript Control",
+  "version": "1.0.0",
+  "description": "Single-click YouTube transcript extraction",
+  "permissions": [
+    "clipboardWrite"
+  ],
+  "host_permissions": [
+    "https://www.youtube.com/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": ["https://www.youtube.com/*"],
+      "js": ["src/content.js"],
+      "css": ["src/styles.css"],
+      "run_at": "document_idle"
+    }
+  ],
+  "icons": {
+    "16": "icons/icon16.svg",
+    "48": "icons/icon48.svg",
+    "128": "icons/icon128.svg"
+  },
+  "web_accessible_resources": [
+    {
+      "resources": ["src/transcript.js"],
+      "matches": ["https://www.youtube.com/*"]
+    }
+  ]
+}
