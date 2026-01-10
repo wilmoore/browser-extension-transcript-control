@@ -14,9 +14,8 @@
       "sourceSpec": "spec-001",
       "sourceBranch": "mvp/transcript-control",
       "createdAt": "2026-01-10T00:00:00.000Z",
-      "status": "in-progress",
-      "mvpBatch": true,
-      "mvpBatchStartedAt": "2026-01-10T00:00:00.000Z"
+      "status": "resolved",
+      "resolvedAt": "2026-01-10T00:00:00.000Z"
     },
     {
       "id": 2,
@@ -31,9 +30,8 @@
       "sourceSpec": "spec-001",
       "sourceBranch": "mvp/transcript-control",
       "createdAt": "2026-01-10T00:00:00.000Z",
-      "status": "in-progress",
-      "mvpBatch": true,
-      "mvpBatchStartedAt": "2026-01-10T00:00:00.000Z"
+      "status": "resolved",
+      "resolvedAt": "2026-01-10T00:00:00.000Z"
     },
     {
       "id": 3,
@@ -48,9 +46,8 @@
       "sourceSpec": "spec-001",
       "sourceBranch": "mvp/transcript-control",
       "createdAt": "2026-01-10T00:00:00.000Z",
-      "status": "in-progress",
-      "mvpBatch": true,
-      "mvpBatchStartedAt": "2026-01-10T00:00:00.000Z"
+      "status": "resolved",
+      "resolvedAt": "2026-01-10T00:00:00.000Z"
     },
     {
       "id": 4,
@@ -65,7 +62,7 @@
       "sourceSpec": "spec-001",
       "sourceBranch": null,
       "createdAt": "2026-01-10T00:00:00.000Z",
-      "status": "open"
+      "status": "wont-fix"
     },
     {
       "id": 5,
@@ -80,7 +77,7 @@
       "sourceSpec": "spec-001",
       "sourceBranch": null,
       "createdAt": "2026-01-10T00:00:00.000Z",
-      "status": "open"
+      "status": "wont-fix"
     },
     {
       "id": 6,
@@ -95,9 +92,8 @@
       "sourceSpec": "spec-001",
       "sourceBranch": "mvp/transcript-control",
       "createdAt": "2026-01-10T00:00:00.000Z",
-      "status": "in-progress",
-      "mvpBatch": true,
-      "mvpBatchStartedAt": "2026-01-10T00:00:00.000Z"
+      "status": "resolved",
+      "resolvedAt": "2026-01-10T00:00:00.000Z"
     },
     {
       "id": 7,
@@ -112,9 +108,8 @@
       "sourceSpec": "spec-001",
       "sourceBranch": "mvp/transcript-control",
       "createdAt": "2026-01-10T00:00:00.000Z",
-      "status": "in-progress",
-      "mvpBatch": true,
-      "mvpBatchStartedAt": "2026-01-10T00:00:00.000Z"
+      "status": "resolved",
+      "resolvedAt": "2026-01-10T00:00:00.000Z"
     },
     {
       "id": 8,
@@ -129,9 +124,8 @@
       "sourceSpec": "spec-001",
       "sourceBranch": "mvp/transcript-control",
       "createdAt": "2026-01-10T00:00:00.000Z",
-      "status": "in-progress",
-      "mvpBatch": true,
-      "mvpBatchStartedAt": "2026-01-10T00:00:00.000Z"
+      "status": "resolved",
+      "resolvedAt": "2026-01-10T00:00:00.000Z"
     }
   ]
 }
