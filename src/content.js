@@ -3,7 +3,7 @@
  * Injects control button into YouTube player and handles transcript extraction
  */
 
-// Load transcript module
+// Load transcript module into page context
 const script = document.createElement('script');
 script.src = chrome.runtime.getURL('src/transcript.js');
 script.onload = () => script.remove();
@@ -27,11 +27,11 @@ function createControlButton() {
   button.setAttribute('title', 'Copy transcript');
   button.setAttribute('data-transcript-control', 'true');
 
-  // SVG icon - bordered Ț to match CC button style
+  // SVG icon - bordered Ț to match CC button style (24x24 like YouTube's native icons)
   button.innerHTML = `
-    <svg height="100%" viewBox="0 0 36 36" width="100%">
-      <rect x="9" y="9" width="18" height="18" rx="2" ry="2" fill="none" stroke="currentColor" stroke-width="2"/>
-      <text x="18" y="16" text-anchor="middle" dominant-baseline="central" font-family="Roboto, Arial, sans-serif" font-size="12" font-weight="500" fill="currentColor">Ț</text>
+    <svg height="24" width="24" viewBox="0 0 24 24">
+      <rect x="3" y="3" width="18" height="18" rx="2" ry="2" fill="none" stroke="currentColor" stroke-width="2"/>
+      <text x="12" y="14" text-anchor="middle" dominant-baseline="central" font-family="Roboto, Arial, sans-serif" font-size="11" font-weight="500" fill="currentColor">Ț</text>
     </svg>
   `;
 
@@ -45,34 +45,50 @@ function createControlButton() {
  */
 async function handleClick() {
   try {
-    // Get transcript from injected page script
-    const transcript = await new Promise((resolve, reject) => {
-      const handler = (event) => {
-        if (event.data.type === 'TRANSCRIPT_RESULT') {
-          window.removeEventListener('message', handler);
-          if (event.data.error) {
-            reject(new Error(event.data.error));
-          } else {
-            resolve(event.data.transcript);
-          }
-        }
-      };
-      window.addEventListener('message', handler);
-      window.postMessage({ type: 'GET_TRANSCRIPT' }, '*');
-
-      // Timeout after 10 seconds
-      setTimeout(() => {
-        window.removeEventListener('message', handler);
-        reject(new Error('Transcript request timeout'));
-      }, 10000);
-    });
-
-    // Copy to clipboard silently
-    await navigator.clipboard.writeText(transcript);
-    // No feedback per design spec
+    // Request transcript from page script
+    const transcript = await requestTranscript();
+    if (transcript) {
+      // Copy to clipboard silently
+      await navigator.clipboard.writeText(transcript);
+    }
+    // No feedback per design spec (ADR-002)
   } catch {
-    // Silent failure per design spec
+    // Silent failure per design spec (ADR-002)
   }
+}
+
+/**
+ * Request transcript from page script via message passing
+ * The transcript.js page script listens for GET_TRANSCRIPT messages
+ * and responds with TRANSCRIPT_RESULT
+ * @returns {Promise<string|null>}
+ */
+function requestTranscript() {
+  return new Promise((resolve) => {
+    const messageId = `transcript-${Date.now()}`;
+
+    const handler = (event) => {
+      if (event.data?.type === 'TRANSCRIPT_RESULT' && event.data?.messageId === messageId) {
+        window.removeEventListener('message', handler);
+        if (event.data.error) {
+          resolve(null);
+        } else {
+          resolve(event.data.transcript);
+        }
+      }
+    };
+
+    window.addEventListener('message', handler);
+
+    // Send request to page script (transcript.js listens for this)
+    window.postMessage({ type: 'GET_TRANSCRIPT', messageId }, '*');
+
+    // Timeout after 15 seconds
+    setTimeout(() => {
+      window.removeEventListener('message', handler);
+      resolve(null);
+    }, 15000);
+  });
 }
 
 /**
@@ -80,7 +96,6 @@ async function handleClick() {
  * @returns {Element|null}
  */
 function findControlsContainer() {
-  // Right controls container where CC button lives
   return document.querySelector('.ytp-right-controls');
 }
 
@@ -94,6 +109,7 @@ function findCCButton() {
 
 /**
  * Inject the control button into YouTube player
+ * Uses safe DOM insertion that handles various YouTube layouts
  */
 function injectControl() {
   // Already injected
@@ -107,17 +123,28 @@ function injectControl() {
   }
 
   controlButton = createControlButton();
-
-  // Insert after CC button if present and is direct child of container
   const ccButton = findCCButton();
-  if (ccButton && ccButton.parentElement === container && ccButton.nextSibling) {
-    container.insertBefore(controlButton, ccButton.nextSibling);
-  } else if (ccButton && ccButton.parentElement === container) {
-    // CC button is last child, append after it
-    ccButton.after(controlButton);
-  } else {
-    // Fallback: insert at start of right controls
-    container.insertBefore(controlButton, container.firstChild);
+
+  // Strategy: Insert before CC button (to the left of it), otherwise at start of right controls
+  if (ccButton) {
+    // Use insertAdjacentElement for safer insertion regardless of parent structure
+    try {
+      ccButton.insertAdjacentElement('beforebegin', controlButton);
+      return;
+    } catch {
+      // Fallback if insertAdjacentElement fails
+    }
+  }
+
+  // Fallback: insert at start of right controls
+  try {
+    if (container.firstChild) {
+      container.insertBefore(controlButton, container.firstChild);
+    } else {
+      container.appendChild(controlButton);
+    }
+  } catch {
+    // Silent failure - button won't appear but extension won't break
   }
 }
 
@@ -171,32 +198,6 @@ function init() {
     subtree: true
   });
 }
-
-// Message handler for transcript requests from page script
-window.addEventListener('message', async (event) => {
-  if (event.data.type === 'GET_TRANSCRIPT') {
-    try {
-      // Access page-level TranscriptControl via eval in page context
-      const result = await new Promise((resolve, reject) => {
-        const script = document.createElement('script');
-        script.textContent = `
-          (async () => {
-            try {
-              const transcript = await window.TranscriptControl.getTranscript();
-              window.postMessage({ type: 'TRANSCRIPT_RESULT', transcript }, '*');
-            } catch (err) {
-              window.postMessage({ type: 'TRANSCRIPT_RESULT', error: err.message }, '*');
-            }
-          })();
-        `;
-        document.documentElement.appendChild(script);
-        script.remove();
-      });
-    } catch (err) {
-      window.postMessage({ type: 'TRANSCRIPT_RESULT', error: err.message }, '*');
-    }
-  }
-});
 
 // Start
 init();

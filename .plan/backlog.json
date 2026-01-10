@@ -1,5 +1,5 @@
 {
-  "lastSequence": 8,
+  "lastSequence": 9,
   "items": [
     {
       "id": 1,
@@ -124,6 +124,19 @@
       "sourceSpec": "spec-001",
       "sourceBranch": "mvp/transcript-control",
       "createdAt": "2026-01-10T00:00:00.000Z",
+      "status": "resolved",
+      "resolvedAt": "2026-01-10T00:00:00.000Z"
+    },
+    {
+      "id": 9,
+      "title": "Fix transcript extraction - button injection, message passing, and PoToken bypass",
+      "description": "Button clicks but nothing happens. Three issues identified:\n1. Button injection fails with DOM error (insertBefore fails on non-child node)\n2. Message passing architecture is broken (circular loop, never resolves)\n3. YouTube now requires PoToken for caption URLs (exp=xpe parameter)\n\nSolution: Use Android client context via Innertube API, fix DOM insertion, simplify message passing.",
+      "category": "feature",
+      "severity": "high",
+      "fingerprint": "feature|9|fix-transcript-extraction",
+      "source": "/pro:feature",
+      "sourceBranch": "feature/fix-transcript-extraction",
+      "createdAt": "2026-01-10T09:58:00.000Z",
       "status": "resolved",
       "resolvedAt": "2026-01-10T00:00:00.000Z"
     }
