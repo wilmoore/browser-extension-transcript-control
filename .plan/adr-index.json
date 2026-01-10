@@ -1,0 +1,13 @@
+{
+  "lastSequence": 3,
+  "entries": [
+    {
+      "branch": "mvp/transcript-control",
+      "adrs": [
+        "001-content-script-page-injection.md",
+        "002-silent-operation-design.md",
+        "003-youtube-player-control-positioning.md"
+      ]
+    }
+  ]
+}
