@@ -6,6 +6,18 @@
  * that would otherwise cause empty responses from caption endpoints.
  */
 
+const LOG_PREFIX = '[TranscriptControl:transcript]';
+
+function log(...args) {
+  console.log(LOG_PREFIX, ...args);
+}
+
+function logError(...args) {
+  console.error(LOG_PREFIX, ...args);
+}
+
+log('Transcript module loaded');
+
 /**
  * Android client context for Innertube API
  * This bypasses the PoToken requirement that web client URLs have
@@ -26,7 +38,9 @@ const ANDROID_CONTEXT = {
  */
 function getVideoId() {
   const urlParams = new URLSearchParams(window.location.search);
-  return urlParams.get('v');
+  const videoId = urlParams.get('v');
+  log('getVideoId:', videoId);
+  return videoId;
 }
 
 /**
@@ -34,7 +48,9 @@ function getVideoId() {
  * @returns {string|null} API key or null if not found
  */
 function getApiKey() {
-  return window.ytcfg?.data_?.INNERTUBE_API_KEY || null;
+  const apiKey = window.ytcfg?.data_?.INNERTUBE_API_KEY || null;
+  log('getApiKey:', apiKey ? `found (${apiKey.substring(0, 10)}...)` : 'not found');
+  return apiKey;
 }
 
 /**
@@ -43,11 +59,13 @@ function getApiKey() {
  * @returns {Promise<object|null>} Player response data or null
  */
 async function fetchPlayerData(videoId) {
+  log('fetchPlayerData for videoId:', videoId);
   const apiKey = getApiKey();
   if (!apiKey) {
     throw new Error('Could not find API key');
   }
 
+  log('Fetching player data from Innertube API...');
   const response = await fetch(`/youtubei/v1/player?key=${apiKey}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -58,11 +76,14 @@ async function fetchPlayerData(videoId) {
     credentials: 'include'
   });
 
+  log('Player API response status:', response.status);
   if (!response.ok) {
     throw new Error(`Player API failed: ${response.status}`);
   }
 
-  return response.json();
+  const data = await response.json();
+  log('Player data received, has captions:', !!data?.captions);
+  return data;
 }
 
 /**
@@ -71,7 +92,12 @@ async function fetchPlayerData(videoId) {
  * @returns {Array} Array of caption track objects
  */
 function getCaptionTracks(playerData) {
-  return playerData?.captions?.playerCaptionsTracklistRenderer?.captionTracks || [];
+  const tracks = playerData?.captions?.playerCaptionsTracklistRenderer?.captionTracks || [];
+  log('getCaptionTracks: found', tracks.length, 'tracks');
+  if (tracks.length > 0) {
+    log('Available tracks:', tracks.map(t => `${t.languageCode} (${t.kind || 'manual'})`).join(', '));
+  }
+  return tracks;
 }
 
 /**
@@ -80,16 +106,20 @@ function getCaptionTracks(playerData) {
  * @returns {Promise<string>} Raw XML transcript
  */
 async function fetchTranscriptXml(baseUrl) {
+  log('fetchTranscriptXml from:', baseUrl.substring(0, 80) + '...');
   const response = await fetch(baseUrl, {
     credentials: 'include',
     signal: AbortSignal.timeout(15000)
   });
 
+  log('Transcript XML response status:', response.status);
   if (!response.ok) {
     throw new Error(`Failed to fetch transcript: ${response.status}`);
   }
 
-  return response.text();
+  const xml = await response.text();
+  log('Received XML, length:', xml.length);
+  return xml;
 }
 
 /**
@@ -179,6 +209,7 @@ function formatTimestamp(ms) {
  * @returns {Promise<string>} Transcript text
  */
 async function getTranscript() {
+  log('getTranscript called');
   const videoId = getVideoId();
   if (!videoId) {
     throw new Error('No video ID found');
@@ -194,6 +225,7 @@ async function getTranscript() {
 
   // Prefer non-auto-generated tracks (manual captions), fallback to first available
   const preferredTrack = tracks.find(t => !t.kind || t.kind !== 'asr') || tracks[0];
+  log('Using track:', preferredTrack.languageCode, '- kind:', preferredTrack.kind || 'manual');
 
   // Fetch and parse transcript
   const xml = await fetchTranscriptXml(preferredTrack.baseUrl);
@@ -203,6 +235,7 @@ async function getTranscript() {
   }
 
   const transcript = parseTranscriptXml(xml);
+  log('Parsed transcript, lines:', transcript.split('\n').length);
 
   if (!transcript) {
     throw new Error('Failed to parse transcript');
@@ -216,6 +249,7 @@ window.TranscriptControl = {
   getTranscript,
   getVideoId
 };
+log('TranscriptControl exported to window');
 
 // Listen for transcript requests from content script
 // This runs in page context and can respond directly via postMessage
@@ -226,11 +260,15 @@ window.addEventListener('message', async (event) => {
   // Check for transcript request with messageId
   if (event.data?.type === 'GET_TRANSCRIPT' && event.data?.messageId) {
     const messageId = event.data.messageId;
+    log('Received GET_TRANSCRIPT request, messageId:', messageId);
     try {
       const transcript = await getTranscript();
+      log('Sending TRANSCRIPT_RESULT success, length:', transcript.length);
       window.postMessage({ type: 'TRANSCRIPT_RESULT', messageId, transcript }, '*');
     } catch (err) {
+      logError('Transcript extraction failed:', err.message);
       window.postMessage({ type: 'TRANSCRIPT_RESULT', messageId, error: err.message }, '*');
     }
   }
 });
+log('Message listener set up');

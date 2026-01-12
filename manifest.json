@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Transcript Control",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Single-click YouTube transcript extraction",
   "permissions": [
     "clipboardWrite"

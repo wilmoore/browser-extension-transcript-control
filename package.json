@@ -1,0 +1,20 @@
+{
+  "name": "transcript-control",
+  "version": "1.0.2",
+  "description": "Single-click YouTube transcript extraction Chrome extension",
+  "type": "module",
+  "scripts": {
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "test:debug": "playwright test --debug"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.48.0"
+  },
+  "keywords": [
+    "youtube",
+    "transcript",
+    "chrome-extension"
+  ],
+  "license": "MIT"
+}
