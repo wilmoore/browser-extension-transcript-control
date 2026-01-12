@@ -1,5 +1,5 @@
 {
-  "lastSequence": 4,
+  "lastSequence": 5,
   "entries": [
     {
       "branch": "mvp/transcript-control",
@@ -13,6 +13,12 @@
       "branch": "feature/fix-transcript-extraction",
       "adrs": [
         "004-android-client-potoken-bypass.md"
+      ]
+    },
+    {
+      "branch": "fix/transcript-no-debug-feedback",
+      "adrs": [
+        "005-console-logging-for-observability.md"
       ]
     }
   ]

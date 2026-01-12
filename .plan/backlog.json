@@ -1,6 +1,19 @@
 {
-  "lastSequence": 9,
+  "lastSequence": 10,
   "items": [
+    {
+      "id": 10,
+      "title": "Transcript extraction fails silently with no debugging visibility",
+      "description": "Bug: Clicking the extension button on YouTube video results in empty clipboard with no indication of what happened.\n\nRepro steps:\n1. Navigate to YouTube video with captions\n2. Click the transcript control button\n\nExpected: Transcript copied to clipboard with visual confirmation\nActual: Empty clipboard, no visual feedback, no debug info\n\nEnvironment: Chrome (latest), macOS\nSeverity: Critical (blocks work)\n\nRoot cause: Silent operation design (ADR-002) makes debugging impossible. Need to add developer console logging and investigate why transcript extraction is failing.\n\nResolution: Added comprehensive console logging throughout content.js and transcript.js. Extension was actually working - issue was lack of observability. Added E2E test suite with Playwright to verify behavior.",
+      "category": "bug",
+      "severity": "critical",
+      "fingerprint": "bug|10|transcript-no-debug-feedback",
+      "source": "/pro:bug",
+      "sourceBranch": "fix/transcript-no-debug-feedback",
+      "createdAt": "2026-01-10T00:00:00.000Z",
+      "status": "resolved",
+      "resolvedAt": "2026-01-10T00:00:00.000Z"
+    },
     {
       "id": 1,
       "title": "Transcript Extraction Core",

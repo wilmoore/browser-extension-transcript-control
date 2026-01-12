@@ -3,11 +3,30 @@
  * Injects control button into YouTube player and handles transcript extraction
  */
 
+const LOG_PREFIX = '[TranscriptControl:content]';
+
+function log(...args) {
+  console.log(LOG_PREFIX, ...args);
+}
+
+function logError(...args) {
+  console.error(LOG_PREFIX, ...args);
+}
+
+log('Content script initializing...');
+
 // Load transcript module into page context
 const script = document.createElement('script');
 script.src = chrome.runtime.getURL('src/transcript.js');
-script.onload = () => script.remove();
+script.onload = () => {
+  log('transcript.js injected successfully');
+  script.remove();
+};
+script.onerror = (err) => {
+  logError('Failed to inject transcript.js:', err);
+};
 (document.head || document.documentElement).appendChild(script);
+log('transcript.js injection initiated');
 
 /**
  * Control button element reference
@@ -44,15 +63,21 @@ function createControlButton() {
  * Extracts transcript and copies to clipboard silently
  */
 async function handleClick() {
+  log('Button clicked, requesting transcript...');
   try {
     // Request transcript from page script
     const transcript = await requestTranscript();
     if (transcript) {
+      log('Transcript received, length:', transcript.length);
       // Copy to clipboard silently
       await navigator.clipboard.writeText(transcript);
+      log('Transcript copied to clipboard successfully');
+    } else {
+      logError('Received empty or null transcript');
     }
     // No feedback per design spec (ADR-002)
-  } catch {
+  } catch (err) {
+    logError('handleClick failed:', err.message);
     // Silent failure per design spec (ADR-002)
   }
 }
@@ -66,13 +91,17 @@ async function handleClick() {
 function requestTranscript() {
   return new Promise((resolve) => {
     const messageId = `transcript-${Date.now()}`;
+    log('Sending GET_TRANSCRIPT message with id:', messageId);
 
     const handler = (event) => {
       if (event.data?.type === 'TRANSCRIPT_RESULT' && event.data?.messageId === messageId) {
+        log('Received TRANSCRIPT_RESULT response');
         window.removeEventListener('message', handler);
         if (event.data.error) {
+          logError('Transcript extraction error:', event.data.error);
           resolve(null);
         } else {
+          log('Transcript extraction successful, length:', event.data.transcript?.length);
           resolve(event.data.transcript);
         }
       }
@@ -85,6 +114,7 @@ function requestTranscript() {
 
     // Timeout after 15 seconds
     setTimeout(() => {
+      logError('Transcript request timed out after 15s');
       window.removeEventListener('message', handler);
       resolve(null);
     }, 15000);
@@ -96,7 +126,9 @@ function requestTranscript() {
  * @returns {Element|null}
  */
 function findControlsContainer() {
-  return document.querySelector('.ytp-right-controls');
+  const container = document.querySelector('.ytp-right-controls');
+  log('findControlsContainer:', container ? 'found' : 'not found');
+  return container;
 }
 
 /**
@@ -104,7 +136,9 @@ function findControlsContainer() {
  * @returns {Element|null}
  */
 function findCCButton() {
-  return document.querySelector('.ytp-subtitles-button');
+  const ccButton = document.querySelector('.ytp-subtitles-button');
+  log('findCCButton:', ccButton ? 'found' : 'not found');
+  return ccButton;
 }
 
 /**
@@ -112,17 +146,22 @@ function findCCButton() {
  * Uses safe DOM insertion that handles various YouTube layouts
  */
 function injectControl() {
+  log('injectControl called');
+
   // Already injected
   if (document.querySelector('[data-transcript-control]')) {
+    log('Button already injected, skipping');
     return;
   }
 
   const container = findControlsContainer();
   if (!container) {
+    log('Controls container not found, will retry');
     return;
   }
 
   controlButton = createControlButton();
+  log('Control button created');
   const ccButton = findCCButton();
 
   // Strategy: Insert before CC button (to the left of it), otherwise at start of right controls
@@ -130,8 +169,10 @@ function injectControl() {
     // Use insertAdjacentElement for safer insertion regardless of parent structure
     try {
       ccButton.insertAdjacentElement('beforebegin', controlButton);
+      log('Button injected before CC button');
       return;
-    } catch {
+    } catch (err) {
+      logError('insertAdjacentElement failed:', err.message);
       // Fallback if insertAdjacentElement fails
     }
   }
@@ -140,10 +181,13 @@ function injectControl() {
   try {
     if (container.firstChild) {
       container.insertBefore(controlButton, container.firstChild);
+      log('Button injected at start of right controls');
     } else {
       container.appendChild(controlButton);
+      log('Button appended to right controls');
     }
-  } catch {
+  } catch (err) {
+    logError('Fallback insertion failed:', err.message);
     // Silent failure - button won't appear but extension won't break
   }
 }
@@ -160,11 +204,15 @@ function isWatchPage() {
  * Initialize control injection with retry logic
  */
 function init() {
+  log('init() called');
+
   if (!isWatchPage()) {
+    log('Not a watch page, exiting init');
     return;
   }
 
   // Try to inject immediately
+  log('Attempting immediate injection');
   injectControl();
 
   // Retry with observer for dynamic loading
@@ -178,15 +226,18 @@ function init() {
     childList: true,
     subtree: true
   });
+  log('MutationObserver set up for dynamic loading');
 
   // Re-inject on navigation (YouTube SPA)
   let lastUrl = location.href;
   const urlObserver = new MutationObserver(() => {
     if (location.href !== lastUrl) {
+      log('URL changed from', lastUrl, 'to', location.href);
       lastUrl = location.href;
       // Small delay for new page content
       setTimeout(() => {
         if (isWatchPage()) {
+          log('Re-injecting after SPA navigation');
           injectControl();
         }
       }, 500);
@@ -197,7 +248,9 @@ function init() {
     childList: true,
     subtree: true
   });
+  log('URL observer set up for SPA navigation');
 }
 
 // Start
+log('Starting initialization');
 init();
